@@ -1,0 +1,79 @@
+version: '3.8'
+services:
+  medresearch_app:
+    container_name: medresearch_app
+    build: ./
+    ports:
+      - 8001:8001
+    networks:
+      - front-tier
+      - back-tier
+    volumes:
+      - static:/app/staticfiles/
+    env_file:
+      - ./.env/medi.env
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      REDIS_URL: redis://redis:6379/1
+
+  medresearch_nginx:
+    container_name:  medresearch_nginx
+    build: ./nginx
+    ports:
+      - 80:80
+    networks:
+      - front-tier
+    volumes:
+      - static:/app/staticfiles/
+    depends_on:
+      - medresearch_app
+
+  postgres:
+    container_name: postgres
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: medresearch
+      POSTGRES_USER: root
+    volumes:
+      - ./postgres:/var/lib/postgresql/data/
+    ports:
+      - 5432:5432
+    networks:
+      - back-tier
+
+  redis:
+    container_name: redis
+    image: redis:alpine
+    command: redis-server --appendonly yes
+    networks:
+      - back-tier
+    volumes:
+      - redis-data:/data
+
+  dbeaver:
+    container_name: cdbeaver
+    image: dbeaver/cloudbeaver:latest
+    ports:
+      - 8180:8978
+    networks:
+      - front-tier
+      - back-tier
+    depends_on:
+      - postgres
+    volumes:
+      - ./dbeaver:/opt/cloudbeaver/workspace
+
+volumes:
+  static:
+  redis-data:
+
+#Docker Networks
+networks:
+  front-tier:
+    driver: bridge
+  back-tier:
+    driver: bridge
